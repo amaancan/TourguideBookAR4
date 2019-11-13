@@ -49,7 +49,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     sceneView.delegate = self
     sceneView.session.delegate = self
 
-    initGestureRecognizers()
+    setupGestureRecognizers()
 
     startARSession()
 
@@ -79,7 +79,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
   // MARK: - Touch response
   // ======================
 
-  func initGestureRecognizers() {
+  private func setupGestureRecognizers() {
     let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleScreenTap))
     sceneView.addGestureRecognizer(tapGestureRecognizer)
   }
@@ -110,12 +110,16 @@ class ViewController: UIViewController, ARSCNViewDelegate {
   // MARK: - 2D image detection
   // =========================
 
-  func startARSession() {
+  private func startARSession() {
     // Make sure that we have an AR resource group.
+    guard let referenceImages = ARReferenceImage.referenceImages(inGroupNamed: "AR Resources", bundle: nil) else {
+      fatalError("No folder/groud in xcassets with the name: AR Resources.")
+    }
 
+    config.worldAlignment = .gravityAndHeading
 
-    // Set up the AR configuration.
-
+    //If set the session will attempt to detect the specified images. When an image is detected an ARImageAnchor will be added to the session.
+    config.detectionImages = referenceImages
 
     // Start the AR session.
     sceneView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
@@ -145,8 +149,11 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     // We only want to deal with image anchors, which encapsulate
     // the position, orientation, and size, of a detected image that matches
     // one of our reference images.
+    guard let imageAnchor = anchor as? ARImageAnchor else { return }
+    let detectedImage = imageAnchor.referenceImage
+    let detectedImageName = detectedImage.name ?? "[Unknown]"
     let isArtImage = true
-    var statusMessage = ""
+    var statusMessage = "Found \(artworkDisplayNames[detectedImageName] ?? "artwork")"
 
     // Draw the appropriate plane over the image.
     updateQueue.async {
