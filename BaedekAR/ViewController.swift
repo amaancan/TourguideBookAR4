@@ -149,15 +149,19 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     // We only want to deal with image anchors, which encapsulate
     // the position, orientation, and size, of a detected image that matches
     // one of our reference images.
-    guard let imageAnchor = anchor as? ARImageAnchor else { return }
-    let detectedImage = imageAnchor.referenceImage
-    let detectedImageName = detectedImage.name ?? "[Unknown]"
+    guard let detectedImageAnchor = anchor as? ARImageAnchor else { return }
+    let referenceImage = detectedImageAnchor.referenceImage
+    let referenceImageName = referenceImage.name ?? "[Unknown]"
     let isArtImage = true
-    var statusMessage = "Found \(artworkDisplayNames[detectedImageName] ?? "artwork")"
+    var statusMessage = "Found \(artworkDisplayNames[referenceImageName] ?? "artwork")"
 
     // Draw the appropriate plane over the image.
     updateQueue.async {
-      var planeNode = SCNNode()
+      var planeNode = self.createArtworkPlaneNode(referenceImage: referenceImage, imageName: referenceImageName)
+
+      // Default plane node is horizontal, so we re-orient it to be verticle by rotating it 90 degrees on x-axis, relative to it's parent node's orientation
+      planeNode.eulerAngles.x = -.pi / 2
+      node.addChildNode(planeNode)
 
       if isArtImage {
         // If the detected artwork is one that we’d like to highlight (and one which we’d
@@ -196,11 +200,23 @@ class ViewController: UIViewController, ARSCNViewDelegate {
   // Create a translucent plane that will overlay the detected artwork,
   // which the user can tap for more information.
   // The plane will flash momentarily when it first appears.
-  func createArtworkPlaneNode(withReferenceImage referenceImage: ARReferenceImage,
-                              andImageName imageName: String) -> SCNNode {
+  private func createArtworkPlaneNode(referenceImage: ARReferenceImage,
+                                      imageName: String) -> SCNNode {
 
-    // Draw the plane.
-    return SCNNode()
+    let flashPlaneAction = SCNAction.sequence([
+      .wait(duration: 0.25),
+      .fadeOpacity(to: 0.85, duration: 0.25),
+      .fadeOpacity(to: 0.25, duration: 0.25)
+    ])
+    let plane = SCNPlane(width: referenceImage.physicalSize.width * 1.5,
+                         height: referenceImage.physicalSize.height * 1.5)
+
+    let planeNode = SCNNode(geometry: plane)
+    planeNode.opacity = 0.25
+    planeNode.runAction(flashPlaneAction)
+    planeNode.name = imageName
+
+    return planeNode
   }
 
   // Create an opaque plane featuring the soothing image of Ray Wenderlich,
